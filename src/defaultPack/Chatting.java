@@ -11,19 +11,19 @@ public class Chatting {
     public static void main(String[] args) {
         Chatting chat=new Chatting();
         Scanner scan=new Scanner(System.in);
-        System.out.println("닉네임을 입력하세요.");
+        System.out.print("Names : ");
         String nick=scan.nextLine();
-        System.out.println("채팅을 열려면 h,참여할려면 j를 입력하세요.");
+        System.out.println("Type h to host, j to join others");
         String input=scan.nextLine();
         if(input.equals("h")){
-            System.out.println("포트번호를 입력하세요.");
+            System.out.print("Port number : ");
             int port=scan.nextInt();
                 chat.server=new Server(port);
-                chat.client=new Client(nick,"127.0.0.1",port);
+                chat.client=new Client(nick,"localhost",port);
         }else if(input.equals("j")) {
-            System.out.println("아이피를 입력하세요.");
+            System.out.print("IP : ");
             String ip=scan.nextLine();
-            System.out.println("포트번호를 입력하세요.");
+            System.out.print("Port number : ");
             int port=scan.nextInt();
             chat.client=new Client(nick,ip,port);
         }

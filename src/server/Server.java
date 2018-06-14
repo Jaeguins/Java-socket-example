@@ -5,15 +5,17 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.*;
+import java.util.Enumeration;
+import java.util.Vector;
 
 public class Server implements Runnable{
     int port,count=0;
     ServerSocket serverSock;
     Socket tSock;
-    ServerThread[] thrs;
+    Vector<ServerThread> thrs;
     public Server(int portNum) {
         port=portNum;
-        thrs=new ServerThread[100];
+        thrs=new Vector<ServerThread>();
         try {
             serverSock=new ServerSocket(port);
             System.out.println("server started");
@@ -28,22 +30,25 @@ public class Server implements Runnable{
         //System.out.println("Server : "+msg);
     }
     public void broadcast(String msg) {
-        for(int i=0;i<count;i++) {
-            thrs[i].o.println(msg);
-            thrs[i].o.flush();
+        Enumeration en = thrs.elements();
+        while (en.hasMoreElements()) {
+            ServerThread c = (ServerThread) en.nextElement();
+            c.o.println(msg);
+            c.o.flush();
         }
     }
-    public synchronized void cut(InetAddress input) {
+    public synchronized void cut(String input) {
         boolean t=false;
-        for(int i=0;i<count;i++) {
-            if(thrs[i].ip.equals(input)) {
-                t=true;
+        Enumeration en = thrs.elements();
+        while (en.hasMoreElements()) {
+            ServerThread c = (ServerThread) en.nextElement();
+            if(c.id.equals(input)) {
+                thrs.remove(c);
+                count-=1;
+                return;
             }
-            if(t) {
-                thrs[i]=thrs[i+1];
-            }else continue;
         }
-        count-=1;
+
     }
     @Override
     public void run() {
@@ -51,14 +56,13 @@ public class Server implements Runnable{
             try {
                 tSock=serverSock.accept();
                 //System.out.println(tSock.getInetAddress()+" connected");
-                thrs[count]=new ServerThread(tSock,this);
-                new Thread(thrs[count]).start();
+                thrs.add(new ServerThread(tSock,this));
+                new Thread(thrs.get(count)).start();
                 count+=1;
-                broadcast("Server : "+thrs[count-1].id+" joined channel.");
+                broadcast("Server : "+thrs.get(count-1)+" joined channel.");
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
         }
     }
 }
@@ -69,6 +73,9 @@ class ServerThread implements Runnable{
     String id;
     InetAddress ip;
     Server server;
+    public String toString() {
+        return id;
+    }
     public ServerThread(Socket sock, Server server) {
         this.server=server;
         this.sock=sock;
@@ -89,27 +96,23 @@ class ServerThread implements Runnable{
     @Override
     public void run() {
         String msg;
-        try {
-            while(true) {
+        while(true) {
+            try {
                 msg=i.readLine();
-                if(msg.equals("\\q")) {
-                    server.cut(ip);
+                if(msg.equals("/q")) {
+                    broadcast(id+" exit channel.");
+                    server.cut(id);
                     break;
                 }else if(msg!=null){
                     server.chatCast(id,msg);
                 }
             }
-        }catch(Exception e) {
-            broadcast(id+" exit channel.");
-            //System.out.println(ip+" disconnected : "+id);
-            try {
-            if(sock!=null) {
-                i.close();
-                o.close();
-                sock.close();
+            catch(Exception e) {
+                broadcast(id+" exit channel.");
+                //System.out.println(ip+" disconnected : "+id);
+                server.cut(id);
+                break;
             }
-            server.cut(ip);
-            }catch(IOException ej) {}
         }
     }
 
